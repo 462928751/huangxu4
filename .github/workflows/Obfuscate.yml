@@ -1,0 +1,54 @@
+name: Build Obfuscate BPB Panel
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 1 * * *"
+
+# 关键修复1：添加正确的权限配置
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    # 关键修复2：使用正确的检出配置
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true  # 保持认证信息
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install obfuscator
+        run: npm install -g javascript-obfuscator
+
+      - name: Download worker
+        run: curl -sS -o origin.js https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/main/build/unobfuscated-worker.js
+
+      - name: Obfuscate code
+        run: |
+          javascript-obfuscator origin.js --output _worker.js \
+          --compact true \
+          --string-array true \
+          --string-array-threshold 0.75 \
+          --transform-object-keys true
+
+      # 关键修复3：完整的提交配置
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'Update obfuscated worker'
+          commit_user_name: 'GitHub Actions'
+          commit_user_email: 'actions@users.noreply.github.com'
+          branch: main
+          # 关键修复4：添加推送令牌
+          token: ${{ secrets.GITHUB_TOKEN }}
